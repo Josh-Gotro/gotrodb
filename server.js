@@ -13,7 +13,7 @@ app.use(bodyParser.json());
 // Enable CORS for a specific origin ('https://www.joshgotro.com' in this case)
 app.use(
   cors({
-    origin: 'https://www.joshgotro.com',
+    origin: ['https://www.joshgotro.com', 'http://localhost:5173'], // Add localhost as an allowed origin
   })
 );
 
