@@ -2,12 +2,20 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const { body, validationResult } = require('express-validator');
-const pool = require('./db'); // Make sure this points to your database configuration file
+const pool = require('./db');
+const cors = require('cors');
 
 const app = express();
 
 // Middleware to parse JSON bodies
 app.use(bodyParser.json());
+
+// Enable CORS for a specific origin ('https://www.joshgotro.com' in this case)
+app.use(
+  cors({
+    origin: 'https://www.joshgotro.com',
+  })
+);
 
 // Root endpoint just for basic testing
 app.get('/', (req, res) => {
