@@ -71,12 +71,27 @@ app.post(
     try {
       const { length, width, height, volume, water, plaster_lbs, plaster_oz } =
         req.body;
+
       const newCalculation = await pool.query(
         'INSERT INTO plaster_calculations (length, width, height, volume, water, plaster_lbs, plaster_oz) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
         [length, width, height, volume, water, plaster_lbs, plaster_oz]
       );
+
       res.json(newCalculation.rows[0]);
     } catch (err) {
+      if (err.code === '23505') {
+        // Unique violation error
+        const existingCalculation = await pool.query(
+          'SELECT * FROM plaster_calculations WHERE length = $1 AND width = $2 AND height = $3',
+          [length.toString(), width.toString(), height.toString()]
+        );
+
+        return res.status(200).json({
+          message: 'A calculation with the same dimensions already exists.',
+          calculation: existingCalculation.rows[0],
+        });
+      }
+
       console.error(err.message);
       res.status(500).send('Server error');
     }
