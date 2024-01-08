@@ -157,6 +157,7 @@ app.post('/ceramic-firings', (req, res) => {
 
   let query;
   let message;
+  let values;
 
   if (id) {
     // If an id is provided, update the existing record
@@ -166,6 +167,18 @@ app.post('/ceramic-firings', (req, res) => {
       WHERE id = $10
     `;
     message = 'Record updated successfully';
+    values = [
+      room_temp,
+      low_fire_start_time,
+      medium_fire_start_time,
+      high_fire_start_time,
+      kiln_turn_off_time,
+      loading_notes,
+      firing_complete,
+      rating,
+      cone_type,
+      id,
+    ];
   } else {
     // If no id is provided, insert a new record
     query = `
@@ -173,20 +186,18 @@ app.post('/ceramic-firings', (req, res) => {
       VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
     `;
     message = 'Record created successfully';
+    values = [
+      room_temp,
+      low_fire_start_time,
+      medium_fire_start_time,
+      high_fire_start_time,
+      kiln_turn_off_time,
+      loading_notes,
+      firing_complete,
+      rating,
+      cone_type,
+    ];
   }
-
-  const values = [
-    room_temp,
-    low_fire_start_time,
-    medium_fire_start_time,
-    high_fire_start_time,
-    kiln_turn_off_time,
-    loading_notes,
-    firing_complete,
-    rating,
-    cone_type,
-    id,
-  ];
 
   pool.query(query, values, (error, results) => {
     if (error) {
