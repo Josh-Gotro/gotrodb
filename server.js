@@ -2,12 +2,20 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const { body, validationResult } = require('express-validator');
-const pool = require('./db'); // Make sure this points to your database configuration file
+const pool = require('./db');
+const cors = require('cors');
 
 const app = express();
 
 // Middleware to parse JSON bodies
 app.use(bodyParser.json());
+
+// Enable CORS for a specific origin ('https://www.joshgotro.com' in this case)
+app.use(
+  cors({
+    origin: ['https://www.joshgotro.com', 'http://localhost:5173'], // Add localhost as an allowed origin
+  })
+);
 
 // Root endpoint just for basic testing
 app.get('/', (req, res) => {
@@ -63,12 +71,27 @@ app.post(
     try {
       const { length, width, height, volume, water, plaster_lbs, plaster_oz } =
         req.body;
+
       const newCalculation = await pool.query(
         'INSERT INTO plaster_calculations (length, width, height, volume, water, plaster_lbs, plaster_oz) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
         [length, width, height, volume, water, plaster_lbs, plaster_oz]
       );
+
       res.json(newCalculation.rows[0]);
     } catch (err) {
+      if (err.code === '23505') {
+        // Unique violation error
+        const existingCalculation = await pool.query(
+          'SELECT * FROM plaster_calculations WHERE length = $1 AND width = $2 AND height = $3',
+          [length.toString(), width.toString(), height.toString()]
+        );
+
+        return res.status(200).json({
+          message: 'A calculation with the same dimensions already exists.',
+          calculation: existingCalculation.rows[0],
+        });
+      }
+
       console.error(err.message);
       res.status(500).send('Server error');
     }
