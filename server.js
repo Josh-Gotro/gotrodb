@@ -149,7 +149,7 @@ app.post('/ceramic-firings', (req, res) => {
     high_fire_start_time,
     kiln_turn_off_time,
     loading_notes,
-    firing_complete,
+    firing_complete = false,
     rating,
     cone_type,
   } = req.body;
@@ -157,6 +157,8 @@ app.post('/ceramic-firings', (req, res) => {
   const query = `
         INSERT INTO public.kiln_ceramic_records(room_temp, low_fire_start_time, medium_fire_start_time, high_fire_start_time, kiln_turn_off_time, loading_notes, firing_complete, rating, cone_type)
         VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ON CONFLICT (id)
+        DO UPDATE SET room_temp = $1, low_fire_start_time = $2, medium_fire_start_time = $3, high_fire_start_time = $4, kiln_turn_off_time = $5, loading_notes = $6, firing_complete = $7, rating = $8, cone_type = $9
     `;
 
   const values = [
@@ -175,7 +177,10 @@ app.post('/ceramic-firings', (req, res) => {
     if (error) {
       res.status(500).json({ error: error.toString() });
     } else {
-      res.json({ status: 'success', message: 'Record created successfully' });
+      res.json({
+        status: 'success',
+        message: 'Record created or updated successfully',
+      });
     }
   });
 });
