@@ -143,6 +143,7 @@ app.get('/ceramic-firings', (req, res) => {
 // POST endpoint to update the current ceramic kiln firing if it exists, otherwise create a new one
 app.post('/ceramic-firings', (req, res) => {
   const {
+    id,
     room_temp,
     low_fire_start_time,
     medium_fire_start_time,
@@ -154,12 +155,25 @@ app.post('/ceramic-firings', (req, res) => {
     cone_type,
   } = req.body;
 
-  const query = `
-        INSERT INTO public.kiln_ceramic_records(room_temp, low_fire_start_time, medium_fire_start_time, high_fire_start_time, kiln_turn_off_time, loading_notes, firing_complete, rating, cone_type)
-        VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        ON CONFLICT (id)
-        DO UPDATE SET room_temp = $1, low_fire_start_time = $2, medium_fire_start_time = $3, high_fire_start_time = $4, kiln_turn_off_time = $5, loading_notes = $6, firing_complete = $7, rating = $8, cone_type = $9
+  let query;
+  let message;
+
+  if (id) {
+    // If an id is provided, update the existing record
+    query = `
+      UPDATE public.kiln_ceramic_records
+      SET room_temp = $1, low_fire_start_time = $2, medium_fire_start_time = $3, high_fire_start_time = $4, kiln_turn_off_time = $5, loading_notes = $6, firing_complete = $7, rating = $8, cone_type = $9
+      WHERE id = $10
     `;
+    message = 'Record updated successfully';
+  } else {
+    // If no id is provided, insert a new record
+    query = `
+      INSERT INTO public.kiln_ceramic_records(room_temp, low_fire_start_time, medium_fire_start_time, high_fire_start_time, kiln_turn_off_time, loading_notes, firing_complete, rating, cone_type)
+      VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `;
+    message = 'Record created successfully';
+  }
 
   const values = [
     room_temp,
@@ -171,16 +185,14 @@ app.post('/ceramic-firings', (req, res) => {
     firing_complete,
     rating,
     cone_type,
+    id,
   ];
 
   pool.query(query, values, (error, results) => {
     if (error) {
       res.status(500).json({ error: error.toString() });
     } else {
-      res.json({
-        status: 'success',
-        message: 'Record created or updated successfully',
-      });
+      res.json({ status: 'success', message });
     }
   });
 });
