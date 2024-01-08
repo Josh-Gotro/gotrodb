@@ -119,6 +119,7 @@ app.get('/current-ceramic-firing', (req, res) => {
       if (error) {
         res.status(500).json({ error: error.toString() });
       } else {
+        console.log(results.rows); // Log the results
         res.json(results.rows[0]);
       }
     }
