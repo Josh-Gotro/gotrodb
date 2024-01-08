@@ -114,12 +114,12 @@ app.get('/plaster-calculations', async (req, res) => {
 //  GET endpoint to retrieve the current ceramic kiln firing
 app.get('/current-ceramic-firing', (req, res) => {
   pool.query(
-    'SELECT * FROM public.kiln_ceramic_records WHERE firing_complete = false',
+    'SELECT * FROM public.kiln_ceramic_records WHERE firing_complete = false ORDER BY id DESC LIMIT 1',
     (error, results) => {
       if (error) {
         res.status(500).json({ error: error.toString() });
       } else {
-        res.json(results.rows);
+        res.json(results.rows[0]);
       }
     }
   );
