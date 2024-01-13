@@ -163,20 +163,21 @@ app.post('/ceramic-firings', (req, res) => {
   if (id) {
     // Update existing record
     query = `
-      INSERT INTO public.kiln_ceramic_records(id, room_temp, low_fire_start_time, medium_fire_start_time, high_fire_start_time, kiln_turn_off_time, loading_notes, unloading_notes, firing_complete, rating, cone_type)
-      VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      ON CONFLICT (id) DO UPDATE SET
-      room_temp = excluded.room_temp,
-      low_fire_start_time = excluded.low_fire_start_time,
-      medium_fire_start_time = excluded.medium_fire_start_time,
-      high_fire_start_time = excluded.high_fire_start_time,
-      kiln_turn_off_time = excluded.kiln_turn_off_time,
-      loading_notes = excluded.loading_notes,
-      unloading_notes = excluded.unloading_notes,
-      firing_complete = excluded.firing_complete,
-      rating = excluded.rating,
-      cone_type = excluded.cone_type
-    `;
+    INSERT INTO public.kiln_ceramic_records(id, room_temp, low_fire_start_time, medium_fire_start_time, high_fire_start_time, kiln_turn_off_time, loading_notes, unloading_notes, firing_complete, rating, cone_type)
+    VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    ON CONFLICT (id) DO UPDATE SET
+    room_temp = excluded.room_temp,
+    low_fire_start_time = excluded.low_fire_start_time,
+    medium_fire_start_time = excluded.medium_fire_start_time,
+    high_fire_start_time = excluded.high_fire_start_time,
+    kiln_turn_off_time = excluded.kiln_turn_off_time,
+    loading_notes = excluded.loading_notes,
+    unloading_notes = excluded.unloading_notes,
+    firing_complete = excluded.firing_complete,
+    rating = excluded.rating,
+    cone_type = excluded.cone_type
+    RETURNING id
+  `;
     message = 'Record updated successfully';
     values = [
       id,
@@ -194,9 +195,10 @@ app.post('/ceramic-firings', (req, res) => {
   } else {
     // Insert new record
     query = `
-      INSERT INTO public.kiln_ceramic_records(room_temp, low_fire_start_time, medium_fire_start_time, high_fire_start_time, kiln_turn_off_time, loading_notes, unloading_notes, firing_complete, rating, cone_type)
-      VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-    `;
+    INSERT INTO public.kiln_ceramic_records(room_temp, low_fire_start_time, medium_fire_start_time, high_fire_start_time, kiln_turn_off_time, loading_notes, unloading_notes, firing_complete, rating, cone_type)
+    VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    RETURNING id
+  `;
     message = 'Record created successfully';
     values = [
       room_temp,
@@ -216,7 +218,7 @@ app.post('/ceramic-firings', (req, res) => {
     if (error) {
       res.status(500).json({ error: error.toString() });
     } else {
-      res.json({ status: 'success', message });
+      res.json({ status: 'success', message, id: results.rows[0].id });
     }
   });
 });
