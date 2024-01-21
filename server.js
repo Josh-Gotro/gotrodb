@@ -176,7 +176,7 @@ app.post('/ceramic-firings', (req, res) => {
     firing_complete = excluded.firing_complete,
     rating = excluded.rating,
     cone_type = excluded.cone_type
-    RETURNING id
+    RETURNING id, created_at
   `;
     message = 'Record updated successfully';
     values = [
@@ -197,7 +197,7 @@ app.post('/ceramic-firings', (req, res) => {
     query = `
     INSERT INTO public.kiln_ceramic_records(room_temp, low_fire_start_time, medium_fire_start_time, high_fire_start_time, kiln_turn_off_time, loading_notes, unloading_notes, firing_complete, rating, cone_type)
     VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-    RETURNING id
+    RETURNING id, created_at
   `;
     message = 'Record created successfully';
     values = [
