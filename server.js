@@ -344,11 +344,11 @@ app.post('/pro-table', (req, res) => {
   const { name, slot, segs } = req.body;
   let query = 'INSERT INTO pro_table (name, slot, segs, rate_temp_hr_m_1';
   let values = [name, slot, segs, req.body.rate_temp_hr_m_1];
-  let placeholders = ['$1', '$2', '$3', '$4'];
+  let placeholders = ['$1', '$2', '$3', 'ARRAY[$4]::integer[]'];
 
   for (let i = 2; i <= segs; i++) {
     query += `, rate_temp_hr_m_${i}`;
-    placeholders.push(`$${placeholders.length + 1}`);
+    placeholders.push(`ARRAY[$${placeholders.length + 1}]::integer[]`);
     values.push(req.body[`rate_temp_hr_m_${i}`]);
   }
 
