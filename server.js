@@ -231,7 +231,7 @@ app.post('/ceramic-firings', (req, res) => {
 
 //GLASS
 // GET endpoint for pro_table
-app.get('/pro-tables', (req, res) => {
+app.get('/pro-table', (req, res) => {
   pool.query('SELECT * FROM pro_table ORDER BY id DESC', (error, results) => {
     if (error) {
       res.status(500).json({ error: error.toString() });
@@ -242,7 +242,7 @@ app.get('/pro-tables', (req, res) => {
 });
 
 // GET endpoint for pro_table by id
-app.get('/pro-tables/:id', (req, res) => {
+app.get('/pro-table/:id', (req, res) => {
   const id = parseInt(req.params.id);
 
   pool.query(
@@ -263,7 +263,7 @@ app.get('/pro-tables/:id', (req, res) => {
 });
 
 // POST endpoint for pro_table
-app.post('/pro-tables', (req, res) => {
+app.post('/pro-table', (req, res) => {
   const { name, slot, segs, rate_temp_hr_m_1 } = req.body;
   pool.query(
     'INSERT INTO pro_table (name, slot, segs, rate_temp_hr_m_1) VALUES ($1, $2, $3, $4) RETURNING *',
@@ -283,7 +283,7 @@ app.post('/pro-tables', (req, res) => {
 });
 
 // PUT endpoint for pro_table by id
-app.put('/pro-tables/:id', (req, res) => {
+app.put('/pro-table/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const { name, slot, segs, rate_temp_hr_m_1 } = req.body;
 
@@ -309,7 +309,7 @@ app.put('/pro-tables/:id', (req, res) => {
 });
 
 // DELETE endpoint for pro_table by id
-app.delete('/pro-tables/:id', (req, res) => {
+app.delete('/pro-table/:id', (req, res) => {
   const id = parseInt(req.params.id);
 
   pool.query('DELETE FROM pro_table WHERE id = $1', [id], (error, results) => {
@@ -340,37 +340,31 @@ app.get('/glass-ceramic-records', (req, res) => {
 });
 
 // POST endpoint for glass_ceramic_records
-app.post('/glass-ceramic-records', (req, res) => {
-  const {
-    room_temp,
-    loading_notes,
-    unloading_notes,
-    fire_time_hr,
-    fire_time_m,
-    glass_type,
-    mode,
-    pro_table_id,
-  } = req.body;
-  pool.query(
-    'INSERT INTO glass_ceramic_records (room_temp, loading_notes, unloading_notes, fire_time_hr, fire_time_m, glass_type, mode, pro_table_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-    [
-      room_temp,
-      loading_notes,
-      unloading_notes,
-      fire_time_hr,
-      fire_time_m,
-      glass_type,
-      mode,
-      pro_table_id,
-    ],
-    (error, results) => {
-      if (error) {
-        res.status(500).json({ error: error.toString() });
-      } else {
-        res.status(201).json({ status: 'success', message: 'Record added.' });
-      }
+app.post('/pro-table', (req, res) => {
+  const { name, slot, segs } = req.body;
+  let query = 'INSERT INTO pro_table (name, slot, segs, rate_temp_hr_m_1';
+  let values = [name, slot, segs, req.body.rate_temp_hr_m_1];
+  let placeholders = ['$1', '$2', '$3', '$4'];
+
+  for (let i = 2; i <= segs; i++) {
+    query += `, rate_temp_hr_m_${i}`;
+    placeholders.push(`$${placeholders.length + 1}`);
+    values.push(req.body[`rate_temp_hr_m_${i}`]);
+  }
+
+  query += `) VALUES (${placeholders.join(', ')}) RETURNING *`;
+
+  pool.query(query, values, (error, results) => {
+    if (error) {
+      res.status(500).json({ error: error.toString() });
+    } else {
+      res.status(201).json({
+        status: 'success',
+        message: 'Record added.',
+        record: results.rows[0],
+      });
     }
-  );
+  });
 });
 
 // GET endpoint for glass_ceramic_records by id
@@ -426,13 +420,11 @@ app.put('/glass-ceramic-records/:id', (req, res) => {
         res.status(500).json({ error: error.toString() });
       } else {
         if (results.rowCount > 0) {
-          res
-            .status(200)
-            .json({
-              status: 'success',
-              message: 'Record updated.',
-              record: results.rows[0],
-            });
+          res.status(200).json({
+            status: 'success',
+            message: 'Record updated.',
+            record: results.rows[0],
+          });
         } else {
           res.status(404).json({ message: 'Record not found' });
         }
