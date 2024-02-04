@@ -342,11 +342,11 @@ app.get('/glass-ceramic-records', (req, res) => {
 // POST endpoint for glass_ceramic_records
 app.post('/pro-table', (req, res) => {
   const { name, slot, segs } = req.body;
-  let query = 'INSERT INTO pro_table (name, slot, segs, rate_temp_hr_m_1';
-  let values = [name, slot, segs, req.body.rate_temp_hr_m_1];
-  let placeholders = ['$1', '$2', '$3', 'ARRAY[$4]::integer[]'];
+  let query = 'INSERT INTO pro_table (name, slot, segs';
+  let values = [name, slot, segs];
+  let placeholders = ['$1', '$2', '$3'];
 
-  for (let i = 2; i <= segs; i++) {
+  for (let i = 1; i <= segs; i++) {
     query += `, rate_temp_hr_m_${i}`;
     placeholders.push(`ARRAY[$${placeholders.length + 1}]::integer[]`);
     values.push(req.body[`rate_temp_hr_m_${i}`]);
