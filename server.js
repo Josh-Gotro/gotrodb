@@ -26,6 +26,7 @@ app.get('/', (req, res) => {
   res.send('Hello World!');
 });
 
+// PLASTER
 // POST endpoint with validation for adding a calculation
 app.post(
   '/plaster-calculation',
@@ -115,6 +116,7 @@ app.get('/plaster-calculations', async (req, res) => {
   }
 });
 
+//CERAMIC
 //  GET endpoint to retrieve the current ceramic kiln firing
 app.get('/current-ceramic-firing', (req, res) => {
   pool.query(
@@ -225,6 +227,241 @@ app.post('/ceramic-firings', (req, res) => {
       res.json({ status: 'success', message, id: results.rows[0].id });
     }
   });
+});
+
+//GLASS
+// GET endpoint for pro_table
+app.get('/pro-tables', (req, res) => {
+  pool.query('SELECT * FROM pro_table ORDER BY id DESC', (error, results) => {
+    if (error) {
+      res.status(500).json({ error: error.toString() });
+    } else {
+      res.json(results.rows);
+    }
+  });
+});
+
+// GET endpoint for pro_table by id
+app.get('/pro-tables/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+
+  pool.query(
+    'SELECT * FROM pro_table WHERE id = $1',
+    [id],
+    (error, results) => {
+      if (error) {
+        res.status(500).json({ error: error.toString() });
+      } else {
+        if (results.rows.length > 0) {
+          res.json(results.rows[0]);
+        } else {
+          res.status(404).json({ message: 'Record not found' });
+        }
+      }
+    }
+  );
+});
+
+// POST endpoint for pro_table
+app.post('/pro-tables', (req, res) => {
+  const { name, slot, segs, rate_temp_hr_m_1 } = req.body;
+  pool.query(
+    'INSERT INTO pro_table (name, slot, segs, rate_temp_hr_m_1) VALUES ($1, $2, $3, $4) RETURNING *',
+    [name, slot, segs, rate_temp_hr_m_1],
+    (error, results) => {
+      if (error) {
+        res.status(500).json({ error: error.toString() });
+      } else {
+        res.status(201).json({
+          status: 'success',
+          message: 'Record added.',
+          record: results.rows[0],
+        });
+      }
+    }
+  );
+});
+
+// PUT endpoint for pro_table by id
+app.put('/pro-tables/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const { name, slot, segs, rate_temp_hr_m_1 } = req.body;
+
+  pool.query(
+    'UPDATE pro_table SET name = $1, slot = $2, segs = $3, rate_temp_hr_m_1 = $4 WHERE id = $5 RETURNING *',
+    [name, slot, segs, rate_temp_hr_m_1, id],
+    (error, results) => {
+      if (error) {
+        res.status(500).json({ error: error.toString() });
+      } else {
+        if (results.rowCount > 0) {
+          res.status(200).json({
+            status: 'success',
+            message: 'Record updated.',
+            record: results.rows[0],
+          });
+        } else {
+          res.status(404).json({ message: 'Record not found' });
+        }
+      }
+    }
+  );
+});
+
+// DELETE endpoint for pro_table by id
+app.delete('/pro-tables/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+
+  pool.query('DELETE FROM pro_table WHERE id = $1', [id], (error, results) => {
+    if (error) {
+      res.status(500).json({ error: error.toString() });
+    } else {
+      if (results.rowCount > 0) {
+        res.status(200).json({ status: 'success', message: 'Record deleted.' });
+      } else {
+        res.status(404).json({ message: 'Record not found' });
+      }
+    }
+  });
+});
+
+// GET endpoint for glass_ceramic_records
+app.get('/glass-ceramic-records', (req, res) => {
+  pool.query(
+    'SELECT * FROM glass_ceramic_records ORDER BY id DESC',
+    (error, results) => {
+      if (error) {
+        res.status(500).json({ error: error.toString() });
+      } else {
+        res.json(results.rows);
+      }
+    }
+  );
+});
+
+// POST endpoint for glass_ceramic_records
+app.post('/glass-ceramic-records', (req, res) => {
+  const {
+    room_temp,
+    loading_notes,
+    unloading_notes,
+    fire_time_hr,
+    fire_time_m,
+    glass_type,
+    mode,
+    pro_table_id,
+  } = req.body;
+  pool.query(
+    'INSERT INTO glass_ceramic_records (room_temp, loading_notes, unloading_notes, fire_time_hr, fire_time_m, glass_type, mode, pro_table_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+    [
+      room_temp,
+      loading_notes,
+      unloading_notes,
+      fire_time_hr,
+      fire_time_m,
+      glass_type,
+      mode,
+      pro_table_id,
+    ],
+    (error, results) => {
+      if (error) {
+        res.status(500).json({ error: error.toString() });
+      } else {
+        res.status(201).json({ status: 'success', message: 'Record added.' });
+      }
+    }
+  );
+});
+
+// GET endpoint for glass_ceramic_records by id
+app.get('/glass-ceramic-records/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+
+  pool.query(
+    'SELECT * FROM glass_ceramic_records WHERE id = $1',
+    [id],
+    (error, results) => {
+      if (error) {
+        res.status(500).json({ error: error.toString() });
+      } else {
+        if (results.rows.length > 0) {
+          res.json(results.rows[0]);
+        } else {
+          res.status(404).json({ message: 'Record not found' });
+        }
+      }
+    }
+  );
+});
+
+// PUT endpoint for glass_ceramic_records by id
+app.put('/glass-ceramic-records/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const {
+    room_temp,
+    loading_notes,
+    unloading_notes,
+    fire_time_hr,
+    fire_time_m,
+    glass_type,
+    mode,
+    pro_table_id,
+  } = req.body;
+
+  pool.query(
+    'UPDATE glass_ceramic_records SET room_temp = $1, loading_notes = $2, unloading_notes = $3, fire_time_hr = $4, fire_time_m = $5, glass_type = $6, mode = $7, pro_table_id = $8 WHERE id = $9 RETURNING *',
+    [
+      room_temp,
+      loading_notes,
+      unloading_notes,
+      fire_time_hr,
+      fire_time_m,
+      glass_type,
+      mode,
+      pro_table_id,
+      id,
+    ],
+    (error, results) => {
+      if (error) {
+        res.status(500).json({ error: error.toString() });
+      } else {
+        if (results.rowCount > 0) {
+          res
+            .status(200)
+            .json({
+              status: 'success',
+              message: 'Record updated.',
+              record: results.rows[0],
+            });
+        } else {
+          res.status(404).json({ message: 'Record not found' });
+        }
+      }
+    }
+  );
+});
+
+// DELETE endpoint for glass_ceramic_records by id
+app.delete('/glass-ceramic-records/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+
+  pool.query(
+    'DELETE FROM glass_ceramic_records WHERE id = $1',
+    [id],
+    (error, results) => {
+      if (error) {
+        res.status(500).json({ error: error.toString() });
+      } else {
+        if (results.rowCount > 0) {
+          res
+            .status(200)
+            .json({ status: 'success', message: 'Record deleted.' });
+        } else {
+          res.status(404).json({ message: 'Record not found' });
+        }
+      }
+    }
+  );
 });
 
 // Starting the server
