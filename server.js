@@ -348,7 +348,7 @@ app.post('/pro-table', (req, res) => {
 
   for (let i = 1; i <= segs; i++) {
     query += `, rate_temp_hr_m_${i}`;
-    placeholders.push(`ARRAY[$${placeholders.length + 1}]::integer[]`);
+    placeholders.push(`$${placeholders.length + 1}::integer[]`);
     values.push(req.body[`rate_temp_hr_m_${i}`]);
   }
 
