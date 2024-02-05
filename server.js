@@ -341,25 +341,22 @@ app.get('/glass-ceramic-records', (req, res) => {
 
 // POST endpoint for glass_ceramic_records
 app.post('/pro_table', (req, res) => {
-  const { name, slot, segs } = req.body;
-  let query = 'INSERT INTO pro_table (name, slot, segs';
-  let values = [name, slot, segs];
-  let placeholders = ['$1', '$2', '$3'];
+  const { name, slot, segs, rate_temp_hr_m_1 } = req.body;
+  let query = 'INSERT INTO pro_table (name, slot, segs, rate_temp_hr_m_1';
+  let values = [name, slot, segs, rate_temp_hr_m_1];
+  let placeholders = ['$1', '$2', '$3', '$4::integer[]'];
 
-  for (let i = 1; i <= segs; i++) {
-    query += `, rate_temp_hr_m_${i}`;
+  for (let i = 2; i <= segs; i++) {
     const value = req.body[`rate_temp_hr_m_${i}`];
     if (value) {
+      query += `, rate_temp_hr_m_${i}`;
       placeholders.push(`$${placeholders.length + 1}::integer[]`);
       values.push(value);
-    } else {
-      placeholders.push(`$${placeholders.length + 1}`);
-      values.push(null);
     }
   }
 
   query += `) VALUES (${placeholders.join(', ')}) RETURNING *`;
-
+  console.log(query);
   pool.query(query, values, (error, results) => {
     if (error) {
       res.status(500).json({ error: error.toString() });
