@@ -348,7 +348,7 @@ app.post('/pro_table', (req, res) => {
 
   for (let i = 2; i <= segs; i++) {
     const value = req.body[`rate_temp_hr_m_${i}`];
-    if (value) {
+    if (value !== undefined) {
       query += `, rate_temp_hr_m_${i}`;
       placeholders.push(`$${placeholders.length + 1}::integer[]`);
       values.push(value);
