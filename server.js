@@ -341,6 +341,8 @@ app.get('/glass-ceramic-records', (req, res) => {
 
 // POST endpoint for pro_table
 app.post('/pro_table', (req, res) => {
+  console.log(req.body);
+
   const {
     name,
     slot,
