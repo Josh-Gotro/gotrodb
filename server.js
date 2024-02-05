@@ -348,8 +348,14 @@ app.post('/pro_table', (req, res) => {
 
   for (let i = 1; i <= segs; i++) {
     query += `, rate_temp_hr_m_${i}`;
-    placeholders.push(`$${placeholders.length + 1}::integer[]`);
-    values.push(req.body[`rate_temp_hr_m_${i}`]);
+    const value = req.body[`rate_temp_hr_m_${i}`];
+    if (value) {
+      placeholders.push(`$${placeholders.length + 1}::integer[]`);
+      values.push(value);
+    } else {
+      placeholders.push(`$${placeholders.length + 1}`);
+      values.push(null);
+    }
   }
 
   query += `) VALUES (${placeholders.join(', ')}) RETURNING *`;
