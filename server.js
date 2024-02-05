@@ -345,8 +345,9 @@ app.post('/pro_table', (req, res) => {
   let query = 'INSERT INTO pro_table (name, slot, segs, rate_temp_hr_m_1';
   let values = [name, slot, segs, rate_temp_hr_m_1];
   let placeholders = ['$1', '$2', '$3', '$4::integer[]'];
+  const segsNumber = Number(segs);
 
-  for (let i = 2; i <= segs; i++) {
+  for (let i = 2; i <= segsNumber; i++) {
     const value = req.body[`rate_temp_hr_m_${i}`];
     if (value !== undefined) {
       query += `, rate_temp_hr_m_${i}`;
