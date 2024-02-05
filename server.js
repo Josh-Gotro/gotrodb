@@ -231,7 +231,7 @@ app.post('/ceramic-firings', (req, res) => {
 
 //GLASS
 // GET endpoint for pro_table
-app.get('/pro-table', (req, res) => {
+app.get('/pro_table', (req, res) => {
   pool.query('SELECT * FROM pro_table ORDER BY id DESC', (error, results) => {
     if (error) {
       res.status(500).json({ error: error.toString() });
@@ -242,7 +242,7 @@ app.get('/pro-table', (req, res) => {
 });
 
 // GET endpoint for pro_table by id
-app.get('/pro-table/:id', (req, res) => {
+app.get('/pro_table/:id', (req, res) => {
   const id = parseInt(req.params.id);
 
   pool.query(
@@ -263,7 +263,7 @@ app.get('/pro-table/:id', (req, res) => {
 });
 
 // POST endpoint for pro_table
-app.post('/pro-table', (req, res) => {
+app.post('/pro_table', (req, res) => {
   const { name, slot, segs, rate_temp_hr_m_1 } = req.body;
   pool.query(
     'INSERT INTO pro_table (name, slot, segs, rate_temp_hr_m_1) VALUES ($1, $2, $3, $4) RETURNING *',
@@ -283,7 +283,7 @@ app.post('/pro-table', (req, res) => {
 });
 
 // PUT endpoint for pro_table by id
-app.put('/pro-table/:id', (req, res) => {
+app.put('/pro_table/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const { name, slot, segs, rate_temp_hr_m_1 } = req.body;
 
@@ -309,7 +309,7 @@ app.put('/pro-table/:id', (req, res) => {
 });
 
 // DELETE endpoint for pro_table by id
-app.delete('/pro-table/:id', (req, res) => {
+app.delete('/pro_table/:id', (req, res) => {
   const id = parseInt(req.params.id);
 
   pool.query('DELETE FROM pro_table WHERE id = $1', [id], (error, results) => {
@@ -340,7 +340,7 @@ app.get('/glass-ceramic-records', (req, res) => {
 });
 
 // POST endpoint for glass_ceramic_records
-app.post('/pro-table', (req, res) => {
+app.post('/pro_table', (req, res) => {
   const { name, slot, segs } = req.body;
   let query = 'INSERT INTO pro_table (name, slot, segs';
   let values = [name, slot, segs];
