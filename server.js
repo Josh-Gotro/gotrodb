@@ -341,8 +341,6 @@ app.get('/glass-ceramic-records', (req, res) => {
 
 // POST endpoint for pro_table
 app.post('/pro_table', (req, res) => {
-  console.log(req.body);
-
   const {
     name,
     slot,
@@ -373,14 +371,13 @@ app.post('/pro_table', (req, res) => {
     rate_temp_hr_m_8,
   ];
 
-  console.log(query);
   pool.query(query, values, (error, results) => {
     if (error) {
       res.status(500).json({ error: error.toString() });
     } else {
       res.status(201).json({
         status: 'success',
-        message: 'Record added.',
+        message: 'Record added, lol.',
         record: results.rows[0],
       });
     }
