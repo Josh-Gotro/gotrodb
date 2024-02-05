@@ -341,23 +341,36 @@ app.get('/glass-ceramic-records', (req, res) => {
 
 // POST endpoint for pro_table
 app.post('/pro_table', (req, res) => {
-  const { name, slot, segs, rate_temp_hr_m_1 } = req.body;
-  let columns = ['name', 'slot', 'segs', 'rate_temp_hr_m_1'];
-  let placeholders = ['$1', '$2', '$3', '$4'];
-  let values = [name, slot, segs, rate_temp_hr_m_1];
+  const {
+    name,
+    slot,
+    segs,
+    rate_temp_hr_m_1,
+    rate_temp_hr_m_2,
+    rate_temp_hr_m_3,
+    rate_temp_hr_m_4,
+    rate_temp_hr_m_5,
+    rate_temp_hr_m_6,
+    rate_temp_hr_m_7,
+    rate_temp_hr_m_8,
+  } = req.body;
 
-  for (let i = 2; i <= 8; i++) {
-    const value = req.body[`rate_temp_hr_m_${i}`];
-    if (value !== undefined) {
-      columns.push(`rate_temp_hr_m_${i}`);
-      placeholders.push(`$${placeholders.length + 1}`);
-      values.push(value);
-    }
-  }
+  let query = `INSERT INTO pro_table (name, slot, segs, rate_temp_hr_m_1, rate_temp_hr_m_2, rate_temp_hr_m_3, rate_temp_hr_m_4, rate_temp_hr_m_5, rate_temp_hr_m_6, rate_temp_hr_m_7, rate_temp_hr_m_8) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`;
 
-  let query = `INSERT INTO pro_table (${columns.join(
-    ', '
-  )}) VALUES (${placeholders.join(', ')}) RETURNING *`;
+  let values = [
+    name,
+    slot,
+    segs,
+    rate_temp_hr_m_1,
+    rate_temp_hr_m_2,
+    rate_temp_hr_m_3,
+    rate_temp_hr_m_4,
+    rate_temp_hr_m_5,
+    rate_temp_hr_m_6,
+    rate_temp_hr_m_7,
+    rate_temp_hr_m_8,
+  ];
+
   console.log(query);
   pool.query(query, values, (error, results) => {
     if (error) {
