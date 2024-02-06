@@ -35,6 +35,20 @@ app.get('/', (req, res) => {
 //#endregion
 
 // #region [ Green ] PLASTER
+
+// GET endpoint to retrieve all calculations
+app.get('/plaster-calculations', async (req, res) => {
+  try {
+    const allCalculations = await pool.query(
+      'SELECT * FROM plaster_calculations'
+    );
+    res.json(allCalculations.rows);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+});
+
 // POST endpoint with validation for adding a calculation
 app.post(
   '/plaster-calculation',
@@ -110,19 +124,6 @@ app.post(
     }
   }
 );
-
-// GET endpoint to retrieve all calculations
-app.get('/plaster-calculations', async (req, res) => {
-  try {
-    const allCalculations = await pool.query(
-      'SELECT * FROM plaster_calculations'
-    );
-    res.json(allCalculations.rows);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
-  }
-});
 //#endregion
 
 // #region [ Brown ] CERAMIC
@@ -241,7 +242,7 @@ app.post('/ceramic-firings', (req, res) => {
 
 // #region [ Blue ] GLASS
 // GET endpoint for pro_table
-app.get('/pro_table', (req, res) => {
+app.get('/pro-table', (req, res) => {
   pool.query('SELECT * FROM pro_table ORDER BY id DESC', (error, results) => {
     if (error) {
       res.status(500).json({ error: error.toString() });
@@ -273,8 +274,7 @@ app.get('/pro_table/:id', (req, res) => {
 });
 
 // POST endpoint for pro_table
-app.post('/pro_table', (req, res) => {
-  console.log(req.body);
+app.post('/pro-table', (req, res) => {
   const {
     name,
     slot,
@@ -327,7 +327,7 @@ app.post('/pro_table', (req, res) => {
 });
 
 // PUT endpoint for pro_table by id
-app.put('/pro_table/:id', (req, res) => {
+app.put('/pro-table/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const { name, slot, segs, rate_temp_hr_m_1 } = req.body;
 
@@ -353,7 +353,7 @@ app.put('/pro_table/:id', (req, res) => {
 });
 
 // DELETE endpoint for pro_table by id
-app.delete('/pro_table/:id', (req, res) => {
+app.delete('/pro-table/:id', (req, res) => {
   const id = parseInt(req.params.id);
 
   pool.query('DELETE FROM pro_table WHERE id = $1', [id], (error, results) => {
@@ -370,7 +370,7 @@ app.delete('/pro_table/:id', (req, res) => {
 });
 
 // GET endpoint for kiln_glass_records
-app.get('/kiln_glass_records', (req, res) => {
+app.get('/kiln-glass-records', (req, res) => {
   pool.query(
     'SELECT * FROM kiln_glass_records ORDER BY id DESC',
     (error, results) => {
@@ -384,7 +384,7 @@ app.get('/kiln_glass_records', (req, res) => {
 });
 
 // GET endpoint for kiln_glass_records by id
-app.get('/kiln_glass_records/:id', (req, res) => {
+app.get('/kiln-glass-records/:id', (req, res) => {
   const id = parseInt(req.params.id);
 
   pool.query(
@@ -405,7 +405,7 @@ app.get('/kiln_glass_records/:id', (req, res) => {
 });
 
 // POST endpoint for kiln_glass_records
-app.post('/kiln_glass_records', (req, res) => {
+app.post('/kiln-glass-records', (req, res) => {
   const {
     room_temp,
     loading_notes,
@@ -452,7 +452,7 @@ app.post('/kiln_glass_records', (req, res) => {
 });
 
 // PUT endpoint for kiln_glass_records by id
-app.put('/kiln_glass_records/:id', (req, res) => {
+app.put('/kiln-glass-records/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const {
     room_temp,
@@ -466,7 +466,7 @@ app.put('/kiln_glass_records/:id', (req, res) => {
   } = req.body;
 
   pool.query(
-    'UPDATE kiln_glass_records SET room_temp = $1, loading_notes = $2, unloading_notes = $3, fire_time_hr = $4, fire_time_m = $5, glass_type = $6, mode = $7, pro_table_id = $8 WHERE id = $9 RETURNING *',
+    'UPDATE kiln-glass-records SET room_temp = $1, loading_notes = $2, unloading_notes = $3, fire_time_hr = $4, fire_time_m = $5, glass_type = $6, mode = $7, pro_table_id = $8 WHERE id = $9 RETURNING *',
     [
       room_temp,
       loading_notes,
@@ -497,7 +497,7 @@ app.put('/kiln_glass_records/:id', (req, res) => {
 });
 
 // DELETE endpoint for kiln_glass_records by id
-app.delete('/kiln_glass_records/:id', (req, res) => {
+app.delete('/kiln-glass-records/:id', (req, res) => {
   const id = parseInt(req.params.id);
 
   pool.query(
