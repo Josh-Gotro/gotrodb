@@ -361,14 +361,14 @@ app.post('/pro_table', (req, res) => {
     name,
     slot,
     segs,
-    rate_temp_hr_m_1,
-    rate_temp_hr_m_2,
-    rate_temp_hr_m_3,
-    rate_temp_hr_m_4,
-    rate_temp_hr_m_5,
-    rate_temp_hr_m_6,
-    rate_temp_hr_m_7,
-    rate_temp_hr_m_8,
+    JSON.stringify(rate_temp_hr_m_1),
+    JSON.stringify(rate_temp_hr_m_2),
+    JSON.stringify(rate_temp_hr_m_3),
+    JSON.stringify(rate_temp_hr_m_4),
+    JSON.stringify(rate_temp_hr_m_5),
+    JSON.stringify(rate_temp_hr_m_6),
+    JSON.stringify(rate_temp_hr_m_7),
+    JSON.stringify(rate_temp_hr_m_8),
   ];
 
   pool.query(query, values, (error, results) => {
