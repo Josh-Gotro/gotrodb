@@ -7,7 +7,8 @@ const cors = require('cors');
 
 const app = express();
 
-// Middleware to parse JSON bodies
+//#region [ rgba(79, 44, 115, 0.5) ] Middleware
+//parse JSON bodies
 app.use(bodyParser.json());
 
 app.set('log level', 'debug');
@@ -22,13 +23,18 @@ app.use(
     ],
   })
 );
+//#endregion
+
+// #region [ rgba(236, 240, 241, 0.15)] SERVER
 
 // Root endpoint just for basic testing
 app.get('/', (req, res) => {
-  res.send('Hello World!');
+  res.send('I need a pencil, I need a pencil my dawg.');
 });
 
-// PLASTER
+//#endregion
+
+// #region [ rgba(26, 204, 113, 0.15)] Plaster
 // POST endpoint with validation for adding a calculation
 app.post(
   '/plaster-calculation',
@@ -117,8 +123,9 @@ app.get('/plaster-calculations', async (req, res) => {
     res.status(500).send('Server error');
   }
 });
+//#endregion
 
-//CERAMIC
+// #region [ rgba(231, 204, 113, 0.15)] Ceramic
 //  GET endpoint to retrieve the current ceramic kiln firing
 app.get('/current-ceramic-firing', (req, res) => {
   pool.query(
@@ -230,8 +237,9 @@ app.post('/ceramic-firings', (req, res) => {
     }
   });
 });
+//#endregion
 
-//GLASS
+// #region [ rgba(52, 152, 219, 0.15)] GLASS
 // GET endpoint for pro_table
 app.get('/pro_table', (req, res) => {
   pool.query('SELECT * FROM pro_table ORDER BY id DESC', (error, results) => {
@@ -279,9 +287,13 @@ app.post('/pro_table', (req, res) => {
     rate_temp_hr_m_6,
     rate_temp_hr_m_7,
     rate_temp_hr_m_8,
+    skip,
+    add_time_hr,
+    add_time_m,
+    adjusted_temp,
   } = req.body;
 
-  let query = `INSERT INTO pro_table (name, slot, segs, rate_temp_hr_m_1, rate_temp_hr_m_2, rate_temp_hr_m_3, rate_temp_hr_m_4, rate_temp_hr_m_5, rate_temp_hr_m_6, rate_temp_hr_m_7, rate_temp_hr_m_8) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`;
+  let query = `INSERT INTO pro_table (name, slot, segs, rate_temp_hr_m_1, rate_temp_hr_m_2, rate_temp_hr_m_3, rate_temp_hr_m_4, rate_temp_hr_m_5, rate_temp_hr_m_6, rate_temp_hr_m_7, rate_temp_hr_m_8, skip, add_time_hr, add_time_m, adjusted_temp) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`;
 
   let values = [
     name,
@@ -295,6 +307,10 @@ app.post('/pro_table', (req, res) => {
     rate_temp_hr_m_6,
     rate_temp_hr_m_7,
     rate_temp_hr_m_8,
+    skip,
+    add_time_hr,
+    add_time_m,
+    adjusted_temp,
   ];
 
   pool.query(query, values, (error, results) => {
@@ -353,10 +369,10 @@ app.delete('/pro_table/:id', (req, res) => {
   });
 });
 
-// GET endpoint for glass_ceramic_records
-app.get('/glass-ceramic-records', (req, res) => {
+// GET endpoint for kiln_glass_records
+app.get('/kiln_glass_records', (req, res) => {
   pool.query(
-    'SELECT * FROM glass_ceramic_records ORDER BY id DESC',
+    'SELECT * FROM kiln_glass_records ORDER BY id DESC',
     (error, results) => {
       if (error) {
         res.status(500).json({ error: error.toString() });
@@ -367,12 +383,12 @@ app.get('/glass-ceramic-records', (req, res) => {
   );
 });
 
-// GET endpoint for glass_ceramic_records by id
-app.get('/glass-ceramic-records/:id', (req, res) => {
+// GET endpoint for kiln_glass_records by id
+app.get('/kiln_glass_records/:id', (req, res) => {
   const id = parseInt(req.params.id);
 
   pool.query(
-    'SELECT * FROM glass_ceramic_records WHERE id = $1',
+    'SELECT * FROM kiln_glass_records WHERE id = $1',
     [id],
     (error, results) => {
       if (error) {
@@ -388,8 +404,55 @@ app.get('/glass-ceramic-records/:id', (req, res) => {
   );
 });
 
-// PUT endpoint for glass_ceramic_records by id
-app.put('/glass-ceramic-records/:id', (req, res) => {
+// POST endpoint for kiln_glass_records
+app.post('/kiln_glass_records', (req, res) => {
+  const {
+    room_temp,
+    loading_notes,
+    unloading_notes,
+    fire_time_hr,
+    fire_time_m,
+    glass_type,
+    glass_type_other,
+    mode,
+    auto_speed,
+    auto_process,
+    auto_mod_temp,
+    auto_mod_hr,
+    auto_mod_m,
+    pro_table_id,
+  } = req.body;
+
+  pool.query(
+    'INSERT INTO kiln_glass_records (room_temp, loading_notes, unloading_notes, fire_time_hr, fire_time_m, glass_type, glass_type_other, mode, auto_speed, auto_process, auto_mod_temp, auto_mod_hr, auto_mod_m, pro_table_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *',
+    [
+      room_temp,
+      loading_notes,
+      unloading_notes,
+      fire_time_hr,
+      fire_time_m,
+      glass_type,
+      glass_type_other,
+      mode,
+      auto_speed,
+      auto_process,
+      auto_mod_temp,
+      auto_mod_hr,
+      auto_mod_m,
+      pro_table_id,
+    ],
+    (error, results) => {
+      if (error) {
+        res.status(500).json({ error: error.toString() });
+      } else {
+        res.status(201).json(results.rows[0]);
+      }
+    }
+  );
+});
+
+// PUT endpoint for kiln_glass_records by id
+app.put('/kiln_glass_records/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const {
     room_temp,
@@ -403,7 +466,7 @@ app.put('/glass-ceramic-records/:id', (req, res) => {
   } = req.body;
 
   pool.query(
-    'UPDATE glass_ceramic_records SET room_temp = $1, loading_notes = $2, unloading_notes = $3, fire_time_hr = $4, fire_time_m = $5, glass_type = $6, mode = $7, pro_table_id = $8 WHERE id = $9 RETURNING *',
+    'UPDATE kiln_glass_records SET room_temp = $1, loading_notes = $2, unloading_notes = $3, fire_time_hr = $4, fire_time_m = $5, glass_type = $6, mode = $7, pro_table_id = $8 WHERE id = $9 RETURNING *',
     [
       room_temp,
       loading_notes,
@@ -433,12 +496,12 @@ app.put('/glass-ceramic-records/:id', (req, res) => {
   );
 });
 
-// DELETE endpoint for glass_ceramic_records by id
-app.delete('/glass-ceramic-records/:id', (req, res) => {
+// DELETE endpoint for kiln_glass_records by id
+app.delete('/kiln_glass_records/:id', (req, res) => {
   const id = parseInt(req.params.id);
 
   pool.query(
-    'DELETE FROM glass_ceramic_records WHERE id = $1',
+    'DELETE FROM kiln_glass_records WHERE id = $1',
     [id],
     (error, results) => {
       if (error) {
@@ -456,8 +519,12 @@ app.delete('/glass-ceramic-records/:id', (req, res) => {
   );
 });
 
+//#endregion
+
+// #region [ rgba(236, 240, 241, 0.15)] SERVER
 // Starting the server
 const PORT = process.env.PORT || 3006;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+//#endregion

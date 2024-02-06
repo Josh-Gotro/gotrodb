@@ -16,5 +16,14 @@
     "express": "^4.18.2",
     "express-validator": "^7.0.1",
     "pg": "^8.11.3"
+  },
+  "coloredRegions": {
+    "namedColors": {
+      "Plaster": "rgba(26, 204, 113, 0.15)",
+      "Ceramic": "rgba(231, 204, 113, 0.15)",
+      "Glass": "rgba(52, 152, 219, 0.15)",
+      "Server": "rgba(236, 240, 241, 0.15)",
+      "Middleware": "rgba(79, 44, 115, 0.5) "
+    }
   }
 }
