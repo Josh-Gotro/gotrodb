@@ -266,22 +266,48 @@ app.get('/pro_table/:id', (req, res) => {
 
 // POST endpoint for pro_table
 app.post('/pro_table', (req, res) => {
-  const { name, slot, segs, rate_temp_hr_m_1 } = req.body;
-  pool.query(
-    'INSERT INTO pro_table (name, slot, segs, rate_temp_hr_m_1) VALUES ($1, $2, $3, $4) RETURNING *',
-    [name, slot, segs, rate_temp_hr_m_1],
-    (error, results) => {
-      if (error) {
-        res.status(500).json({ error: error.toString() });
-      } else {
-        res.status(201).json({
-          status: 'success',
-          message: 'Record added.',
-          record: results.rows[0],
-        });
-      }
+  console.log(req.body);
+  const {
+    name,
+    slot,
+    segs,
+    rate_temp_hr_m_1,
+    rate_temp_hr_m_2,
+    rate_temp_hr_m_3,
+    rate_temp_hr_m_4,
+    rate_temp_hr_m_5,
+    rate_temp_hr_m_6,
+    rate_temp_hr_m_7,
+    rate_temp_hr_m_8,
+  } = req.body;
+
+  let query = `INSERT INTO pro_table (name, slot, segs, rate_temp_hr_m_1, rate_temp_hr_m_2, rate_temp_hr_m_3, rate_temp_hr_m_4, rate_temp_hr_m_5, rate_temp_hr_m_6, rate_temp_hr_m_7, rate_temp_hr_m_8) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`;
+
+  let values = [
+    name,
+    slot,
+    segs,
+    rate_temp_hr_m_1,
+    rate_temp_hr_m_2,
+    rate_temp_hr_m_3,
+    rate_temp_hr_m_4,
+    rate_temp_hr_m_5,
+    rate_temp_hr_m_6,
+    rate_temp_hr_m_7,
+    rate_temp_hr_m_8,
+  ];
+
+  pool.query(query, values, (error, results) => {
+    if (error) {
+      res.status(500).json({ error: error.toString() });
+    } else {
+      res.status(201).json({
+        status: 'success',
+        message: 'Record added, lol.',
+        record: results.rows[0],
+      });
     }
-  );
+  });
 });
 
 // PUT endpoint for pro_table by id
@@ -339,52 +365,6 @@ app.get('/glass-ceramic-records', (req, res) => {
       }
     }
   );
-});
-
-// POST endpoint for pro_table
-app.post('/pro_table', (req, res) => {
-  console.log(req.body);
-  const {
-    name,
-    slot,
-    segs,
-    rate_temp_hr_m_1,
-    rate_temp_hr_m_2,
-    rate_temp_hr_m_3,
-    rate_temp_hr_m_4,
-    rate_temp_hr_m_5,
-    rate_temp_hr_m_6,
-    rate_temp_hr_m_7,
-    rate_temp_hr_m_8,
-  } = req.body;
-
-  let query = `INSERT INTO pro_table (name, slot, segs, rate_temp_hr_m_1, rate_temp_hr_m_2, rate_temp_hr_m_3, rate_temp_hr_m_4, rate_temp_hr_m_5, rate_temp_hr_m_6, rate_temp_hr_m_7, rate_temp_hr_m_8) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`;
-
-  let values = [
-    name,
-    slot,
-    segs,
-    rate_temp_hr_m_1,
-    rate_temp_hr_m_2,
-    rate_temp_hr_m_3,
-    rate_temp_hr_m_4,
-    rate_temp_hr_m_5,
-    rate_temp_hr_m_6,
-    rate_temp_hr_m_7,
-    rate_temp_hr_m_8,
-  ];
-
-  pool.query(query, values, (error, results) => {
-    if (error) {
-      res.status(500).json({ error: error.toString() });
-    } else {
-      res.status(201).json({
-        status: 'success',
-        message: 'Record added, lol.',
-        record: results.rows[0],
-      });
-    }
-  });
 });
 
 // GET endpoint for glass_ceramic_records by id
