@@ -10,6 +10,8 @@ const app = express();
 // Middleware to parse JSON bodies
 app.use(bodyParser.json());
 
+app.set('log level', 'debug');
+
 // Enable CORS for a specific origin ('https://www.joshgotro.com' in this case)
 app.use(
   cors({
@@ -341,6 +343,7 @@ app.get('/glass-ceramic-records', (req, res) => {
 
 // POST endpoint for pro_table
 app.post('/pro_table', (req, res) => {
+  console.log(req.body);
   const {
     name,
     slot,
