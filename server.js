@@ -7,7 +7,7 @@ const cors = require('cors');
 
 const app = express();
 
-//#region [ rgba(79, 44, 115, 0.5) ] Middleware
+//#region [ Purple ] MIDDLEWARE
 //parse JSON bodies
 app.use(bodyParser.json());
 
@@ -25,7 +25,7 @@ app.use(
 );
 //#endregion
 
-// #region [ rgba(236, 240, 241, 0.15)] SERVER
+// #region [ Grey ] SERVER
 
 // Root endpoint just for basic testing
 app.get('/', (req, res) => {
@@ -34,7 +34,7 @@ app.get('/', (req, res) => {
 
 //#endregion
 
-// #region [ rgba(26, 204, 113, 0.15)] Plaster
+// #region [ Green ] PLASTER
 // POST endpoint with validation for adding a calculation
 app.post(
   '/plaster-calculation',
@@ -125,7 +125,7 @@ app.get('/plaster-calculations', async (req, res) => {
 });
 //#endregion
 
-// #region [ rgba(231, 204, 113, 0.15)] Ceramic
+// #region [ Brown ] CERAMIC
 //  GET endpoint to retrieve the current ceramic kiln firing
 app.get('/current-ceramic-firing', (req, res) => {
   pool.query(
@@ -239,7 +239,7 @@ app.post('/ceramic-firings', (req, res) => {
 });
 //#endregion
 
-// #region [ rgba(52, 152, 219, 0.15)] GLASS
+// #region [ Blue ] GLASS
 // GET endpoint for pro_table
 app.get('/pro_table', (req, res) => {
   pool.query('SELECT * FROM pro_table ORDER BY id DESC', (error, results) => {
@@ -521,7 +521,7 @@ app.delete('/kiln_glass_records/:id', (req, res) => {
 
 //#endregion
 
-// #region [ rgba(236, 240, 241, 0.15)] SERVER
+// #region [ Server]
 // Starting the server
 const PORT = process.env.PORT || 3006;
 app.listen(PORT, () => {
