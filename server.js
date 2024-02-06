@@ -241,7 +241,7 @@ app.post('/ceramic-firings', (req, res) => {
 //#endregion
 
 // #region [ Blue ] GLASS
-// GET endpoint for pro_table
+// GET all pro_tables
 app.get('/pro-table', (req, res) => {
   pool.query('SELECT * FROM pro_table ORDER BY id DESC', (error, results) => {
     if (error) {
@@ -253,7 +253,7 @@ app.get('/pro-table', (req, res) => {
 });
 
 // GET endpoint for pro_table by id
-app.get('/pro_table/:id', (req, res) => {
+app.get('/pro-table/:id', (req, res) => {
   const id = parseInt(req.params.id);
 
   pool.query(
