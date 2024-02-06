@@ -466,7 +466,7 @@ app.put('/kiln-glass-records/:id', (req, res) => {
   } = req.body;
 
   pool.query(
-    'UPDATE kiln-glass-records SET room_temp = $1, loading_notes = $2, unloading_notes = $3, fire_time_hr = $4, fire_time_m = $5, glass_type = $6, mode = $7, pro_table_id = $8 WHERE id = $9 RETURNING *',
+    'UPDATE kiln_glass_records SET room_temp = $1, loading_notes = $2, unloading_notes = $3, fire_time_hr = $4, fire_time_m = $5, glass_type = $6, mode = $7, pro_table_id = $8 WHERE id = $9 RETURNING *',
     [
       room_temp,
       loading_notes,
