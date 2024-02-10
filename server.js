@@ -460,7 +460,7 @@ app.post(
       .isNumeric()
       .withMessage('Pro table ID must be a number')
       .customSanitizer((value) => {
-        return value === '' ? null : value;
+        return value === '0' ? null : value;
       }),
     body('glass_type')
       .optional()
