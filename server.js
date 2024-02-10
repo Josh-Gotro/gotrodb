@@ -411,15 +411,24 @@ app.post(
     body('room_temp')
       .optional()
       .isNumeric()
-      .withMessage('Room temperature must be a number'),
+      .withMessage('Room temperature must be a number')
+      .customSanitizer((value) => {
+        return value === '' ? null : value;
+      }),
     body('fire_time_hr')
       .optional()
       .isNumeric()
-      .withMessage('Fire time (hours) must be a number'),
+      .withMessage('Fire time (hours) must be a number')
+      .customSanitizer((value) => {
+        return value === '' ? null : value;
+      }),
     body('fire_time_m')
       .optional()
       .isNumeric()
-      .withMessage('Fire time (minutes) must be a number'),
+      .withMessage('Fire time (minutes) must be a number')
+      .customSanitizer((value) => {
+        return value === '' ? null : value;
+      }),
     body('mode')
       .exists()
       .withMessage('Mode is required')
@@ -428,19 +437,31 @@ app.post(
     body('auto_mod_temp')
       .optional()
       .isNumeric()
-      .withMessage('Auto mod temp must be a number'),
+      .withMessage('Auto mod temp must be a number')
+      .customSanitizer((value) => {
+        return value === '' ? null : value;
+      }),
     body('auto_mod_hr')
       .optional()
       .isNumeric()
-      .withMessage('Auto mod hour must be a number'),
+      .withMessage('Auto mod hour must be a number')
+      .customSanitizer((value) => {
+        return value === '' ? null : value;
+      }),
     body('auto_mod_m')
       .optional()
       .isNumeric()
-      .withMessage('Auto mod minute must be a number'),
+      .withMessage('Auto mod minute must be a number')
+      .customSanitizer((value) => {
+        return value === '' ? null : value;
+      }),
     body('pro_table_id')
       .optional()
       .isNumeric()
-      .withMessage('Pro table ID must be a number'),
+      .withMessage('Pro table ID must be a number')
+      .customSanitizer((value) => {
+        return value === '' ? null : value;
+      }),
     body('glass_type')
       .optional()
       .isIn(['WINE', 'BEER', 'STAINED', '96COE', '90COE', 'MIXED', 'OTHER'])
