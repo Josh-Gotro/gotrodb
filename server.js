@@ -405,27 +405,47 @@ app.get('/kiln-glass-records/:id', (req, res) => {
 });
 
 // POST endpoint for kiln_glass_records
-app.post('/kiln-glass-records', (req, res) => {
-  const {
-    room_temp,
-    loading_notes,
-    unloading_notes,
-    fire_time_hr,
-    fire_time_m,
-    glass_type,
-    glass_type_other,
-    mode,
-    auto_speed,
-    auto_process,
-    auto_mod_temp,
-    auto_mod_hr,
-    auto_mod_m,
-    pro_table_id,
-  } = req.body;
-
-  pool.query(
-    'INSERT INTO kiln_glass_records (room_temp, loading_notes, unloading_notes, fire_time_hr, fire_time_m, glass_type, glass_type_other, mode, auto_speed, auto_process, auto_mod_temp, auto_mod_hr, auto_mod_m, pro_table_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *',
-    [
+app.post(
+  '/kiln-glass-records',
+  [
+    body('room_temp')
+      .isNumeric()
+      .withMessage('Room temperature must be a number'),
+    body('fire_time_hr')
+      .isNumeric()
+      .withMessage('Fire time (hours) must be a number'),
+    body('fire_time_m')
+      .isNumeric()
+      .withMessage('Fire time (minutes) must be a number'),
+    body('mode')
+      .exists()
+      .withMessage('Mode is required')
+      .isIn(['AUTO', 'PRO'])
+      .withMessage('Invalid mode'),
+    body('auto_mod_temp')
+      .isNumeric()
+      .withMessage('Auto mod temp must be a number'),
+    body('auto_mod_hr')
+      .isNumeric()
+      .withMessage('Auto mod hour must be a number'),
+    body('auto_mod_m')
+      .isNumeric()
+      .withMessage('Auto mod minute must be a number'),
+    body('pro_table_id')
+      .isNumeric()
+      .withMessage('Pro table ID must be a number'),
+    body('glass_type')
+      .isIn(['WINE', 'BEER', 'STAINED', '96COE', '90COE', 'MIXED', 'OTHER'])
+      .withMessage('Invalid glass type'),
+    body('auto_speed')
+      .isIn(['SLo', 'MEd', 'FASt'])
+      .withMessage('Invalid auto speed'),
+    body('auto_process')
+      .isIn(['SLP', 'tAC', 'FULL'])
+      .withMessage('Invalid auto process'),
+  ],
+  (req, res) => {
+    const {
       room_temp,
       loading_notes,
       unloading_notes,
@@ -440,16 +460,36 @@ app.post('/kiln-glass-records', (req, res) => {
       auto_mod_hr,
       auto_mod_m,
       pro_table_id,
-    ],
-    (error, results) => {
-      if (error) {
-        res.status(500).json({ error: error.toString() });
-      } else {
-        res.status(201).json(results.rows[0]);
+    } = req.body;
+
+    pool.query(
+      'INSERT INTO kiln_glass_records (room_temp, loading_notes, unloading_notes, fire_time_hr, fire_time_m, glass_type, glass_type_other, mode, auto_speed, auto_process, auto_mod_temp, auto_mod_hr, auto_mod_m, pro_table_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *',
+      [
+        room_temp,
+        loading_notes,
+        unloading_notes,
+        fire_time_hr,
+        fire_time_m,
+        glass_type,
+        glass_type_other,
+        mode,
+        auto_speed,
+        auto_process,
+        auto_mod_temp,
+        auto_mod_hr,
+        auto_mod_m,
+        pro_table_id,
+      ],
+      (error, results) => {
+        if (error) {
+          res.status(500).json({ error: error.toString() });
+        } else {
+          res.status(201).json(results.rows[0]);
+        }
       }
-    }
-  );
-});
+    );
+  }
+);
 
 // PUT endpoint for kiln_glass_records by id
 app.put('/kiln-glass-records/:id', (req, res) => {
@@ -521,7 +561,7 @@ app.delete('/kiln-glass-records/:id', (req, res) => {
 
 //#endregion
 
-// #region [ Server]
+// #region [ Grey]
 // Starting the server
 const PORT = process.env.PORT || 3006;
 app.listen(PORT, () => {
