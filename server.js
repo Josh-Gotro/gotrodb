@@ -409,12 +409,15 @@ app.post(
   '/kiln-glass-records',
   [
     body('room_temp')
+      .optional()
       .isNumeric()
       .withMessage('Room temperature must be a number'),
     body('fire_time_hr')
+      .optional()
       .isNumeric()
       .withMessage('Fire time (hours) must be a number'),
     body('fire_time_m')
+      .optional()
       .isNumeric()
       .withMessage('Fire time (minutes) must be a number'),
     body('mode')
@@ -423,24 +426,31 @@ app.post(
       .isIn(['AUTO', 'PRO'])
       .withMessage('Invalid mode'),
     body('auto_mod_temp')
+      .optional()
       .isNumeric()
       .withMessage('Auto mod temp must be a number'),
     body('auto_mod_hr')
+      .optional()
       .isNumeric()
       .withMessage('Auto mod hour must be a number'),
     body('auto_mod_m')
+      .optional()
       .isNumeric()
       .withMessage('Auto mod minute must be a number'),
     body('pro_table_id')
+      .optional()
       .isNumeric()
       .withMessage('Pro table ID must be a number'),
     body('glass_type')
+      .optional()
       .isIn(['WINE', 'BEER', 'STAINED', '96COE', '90COE', 'MIXED', 'OTHER'])
       .withMessage('Invalid glass type'),
     body('auto_speed')
+      .optional()
       .isIn(['SLo', 'MEd', 'FASt'])
       .withMessage('Invalid auto speed'),
     body('auto_process')
+      .optional()
       .isIn(['SLP', 'tAC', 'FULL'])
       .withMessage('Invalid auto process'),
   ],
