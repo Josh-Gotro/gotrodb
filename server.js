@@ -592,6 +592,114 @@ app.delete('/kiln-glass-records/:id', (req, res) => {
 
 //#endregion
 
+// #region [ Spotify Green ] SPOTIFY
+// POST endpoint to exchange authorization code for tokens
+app.post('/spotify/token', async (req, res) => {
+  const { code, redirect_uri } = req.body;
+
+  if (!code) {
+    return res.status(400).json({ error: 'Authorization code is required' });
+  }
+
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    console.error('Spotify credentials not configured');
+    return res.status(500).json({ error: 'Spotify credentials not configured' });
+  }
+
+  try {
+    const response = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization:
+          'Basic ' +
+          Buffer.from(clientId + ':' + clientSecret).toString('base64'),
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: redirect_uri || process.env.SPOTIFY_REDIRECT_URI,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Spotify token error:', data);
+      return res.status(response.status).json({
+        error: data.error || 'Failed to exchange token',
+        error_description: data.error_description,
+      });
+    }
+
+    res.json({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_in: data.expires_in,
+      token_type: data.token_type,
+    });
+  } catch (error) {
+    console.error('Spotify token exchange error:', error);
+    res.status(500).json({ error: 'Failed to exchange authorization code' });
+  }
+});
+
+// POST endpoint to refresh access token
+app.post('/spotify/refresh', async (req, res) => {
+  const { refresh_token } = req.body;
+
+  if (!refresh_token) {
+    return res.status(400).json({ error: 'Refresh token is required' });
+  }
+
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    console.error('Spotify credentials not configured');
+    return res.status(500).json({ error: 'Spotify credentials not configured' });
+  }
+
+  try {
+    const response = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization:
+          'Basic ' +
+          Buffer.from(clientId + ':' + clientSecret).toString('base64'),
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Spotify refresh error:', data);
+      return res.status(response.status).json({
+        error: data.error || 'Failed to refresh token',
+        error_description: data.error_description,
+      });
+    }
+
+    res.json({
+      access_token: data.access_token,
+      expires_in: data.expires_in,
+      token_type: data.token_type,
+    });
+  } catch (error) {
+    console.error('Spotify token refresh error:', error);
+    res.status(500).json({ error: 'Failed to refresh token' });
+  }
+});
+//#endregion
+
 // #region [ Grey]
 // Starting the server
 const PORT = process.env.PORT || 3006;
