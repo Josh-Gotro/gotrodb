@@ -647,6 +647,61 @@ app.post('/spotify/token', async (req, res) => {
   }
 });
 
+// POST endpoint to store tokens for MCP access
+app.post('/spotify/mcp-token', async (req, res) => {
+  const { access_token, refresh_token, expires_in } = req.body;
+
+  if (!access_token || !refresh_token) {
+    return res.status(400).json({ error: 'access_token and refresh_token are required' });
+  }
+
+  try {
+    // Store token in database (upsert - update if exists, insert if not)
+    const expiresAt = Math.floor(Date.now() / 1000) + (expires_in || 3600);
+
+    await pool.query(`
+      INSERT INTO spotify_mcp_tokens (id, access_token, refresh_token, expires_at, token_type, scope)
+      VALUES (1, $1, $2, $3, 'Bearer', $4)
+      ON CONFLICT (id) DO UPDATE SET
+        access_token = $1,
+        refresh_token = $2,
+        expires_at = $3,
+        updated_at = NOW()
+    `, [access_token, refresh_token, expiresAt, 'user-library-read user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public']);
+
+    res.json({ status: 'success', message: 'Token stored for MCP' });
+  } catch (error) {
+    console.error('Error storing MCP token:', error);
+    res.status(500).json({ error: 'Failed to store token' });
+  }
+});
+
+// GET endpoint to retrieve tokens for MCP (spotipy format)
+app.get('/spotify/mcp-token', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM spotify_mcp_tokens WHERE id = 1');
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No token found. Please authenticate via joshgotro.com/spotify first.' });
+    }
+
+    const token = result.rows[0];
+
+    // Return in spotipy cache format
+    res.json({
+      access_token: token.access_token,
+      refresh_token: token.refresh_token,
+      token_type: token.token_type || 'Bearer',
+      expires_at: token.expires_at,
+      scope: token.scope,
+      expires_in: Math.max(0, token.expires_at - Math.floor(Date.now() / 1000))
+    });
+  } catch (error) {
+    console.error('Error retrieving MCP token:', error);
+    res.status(500).json({ error: 'Failed to retrieve token' });
+  }
+});
+
 // POST endpoint to refresh access token
 app.post('/spotify/refresh', async (req, res) => {
   const { refresh_token } = req.body;
