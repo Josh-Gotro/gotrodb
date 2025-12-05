@@ -667,7 +667,7 @@ app.post('/spotify/mcp-token', async (req, res) => {
         refresh_token = $2,
         expires_at = $3,
         updated_at = NOW()
-    `, [access_token, refresh_token, expiresAt, 'user-library-read user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public']);
+    `, [access_token, refresh_token, expiresAt, 'user-library-read user-library-modify user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public']);
 
     res.json({ status: 'success', message: 'Token stored for MCP' });
   } catch (error) {
