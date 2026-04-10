@@ -763,11 +763,12 @@ app.post('/spotify/refresh', async (req, res) => {
 app.post('/api/oauth/discobard/start', apiKeyAuth, async (req, res) => {
   try {
     const state = crypto.randomBytes(32).toString('hex');
+    const returnUrl = req.body.returnUrl || null;
 
     await pool.query(
-      `INSERT INTO oauth_handoffs (provider, state, status, expires_at)
-       VALUES ('warcraftlogs', $1, 'pending', NOW() + INTERVAL '15 minutes')`,
-      [state]
+      `INSERT INTO oauth_handoffs (provider, state, status, expires_at, return_url)
+       VALUES ('warcraftlogs', $1, 'pending', NOW() + INTERVAL '15 minutes', $2)`,
+      [state, returnUrl]
     );
 
     const params = new URLSearchParams({
@@ -803,7 +804,7 @@ app.post(
 
     try {
       const handoff = await pool.query(
-        `SELECT id FROM oauth_handoffs
+        `SELECT id, return_url FROM oauth_handoffs
          WHERE state = $1 AND status = 'pending' AND expires_at > NOW()`,
         [state]
       );
@@ -873,7 +874,11 @@ app.post(
         ]
       );
 
-      res.json({ success: true, message: 'Authorization completed' });
+      res.json({
+        success: true,
+        message: 'Authorization completed',
+        returnUrl: handoff.rows[0].return_url || null,
+      });
     } catch (err) {
       console.error('OAuth callback error:', err.message);
 
