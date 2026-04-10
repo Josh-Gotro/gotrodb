@@ -1,9 +1,12 @@
 require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
-const { body, validationResult } = require('express-validator');
+const crypto = require('crypto');
+const { body, query, validationResult } = require('express-validator');
 const pool = require('./db');
 const cors = require('cors');
+const { encrypt, decrypt } = require('./encryption');
+const apiKeyAuth = require('./middleware/apiKeyAuth');
 
 const app = express();
 
@@ -753,6 +756,235 @@ app.post('/spotify/refresh', async (req, res) => {
     res.status(500).json({ error: 'Failed to refresh token' });
   }
 });
+//#endregion
+
+// #region [ Orange ] DISCOBARD OAUTH BRIDGE
+// POST endpoint to initiate an OAuth handoff for Warcraft Logs
+app.post('/api/oauth/discobard/start', apiKeyAuth, async (req, res) => {
+  try {
+    const state = crypto.randomBytes(32).toString('hex');
+
+    await pool.query(
+      `INSERT INTO oauth_handoffs (provider, state, status, expires_at)
+       VALUES ('warcraftlogs', $1, 'pending', NOW() + INTERVAL '15 minutes')`,
+      [state]
+    );
+
+    const params = new URLSearchParams({
+      client_id: process.env.WARCRAFTLOGS_CLIENT_ID,
+      redirect_uri: process.env.WARCRAFTLOGS_REDIRECT_URI,
+      response_type: 'code',
+      state,
+    });
+
+    const authorizeUrl = `https://www.warcraftlogs.com/oauth/authorize?${params.toString()}`;
+
+    res.json({ state, authorizeUrl });
+  } catch (err) {
+    console.error('Failed to start OAuth handoff:', err.message);
+    res.status(500).json({ error: 'Failed to initiate authorization' });
+  }
+});
+
+// POST endpoint for the frontend callback to exchange code for tokens
+app.post(
+  '/api/oauth/discobard/callback',
+  [
+    body('code').exists().withMessage('Authorization code is required'),
+    body('state').exists().withMessage('State is required'),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { code, state } = req.body;
+
+    try {
+      const handoff = await pool.query(
+        `SELECT id FROM oauth_handoffs
+         WHERE state = $1 AND status = 'pending' AND expires_at > NOW()`,
+        [state]
+      );
+
+      if (handoff.rows.length === 0) {
+        return res
+          .status(400)
+          .json({ success: false, error: 'Invalid or expired state' });
+      }
+
+      const tokenResponse = await fetch(
+        'https://www.warcraftlogs.com/oauth/token',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'authorization_code',
+            code,
+            redirect_uri: process.env.WARCRAFTLOGS_REDIRECT_URI,
+            client_id: process.env.WARCRAFTLOGS_CLIENT_ID,
+            client_secret: process.env.WARCRAFTLOGS_CLIENT_SECRET,
+          }).toString(),
+        }
+      );
+
+      if (!tokenResponse.ok) {
+        const errorBody = await tokenResponse.text();
+        console.error('Token exchange failed:', tokenResponse.status);
+
+        await pool.query(
+          `UPDATE oauth_handoffs
+           SET status = 'failed', error_message = $1, updated_at = NOW()
+           WHERE state = $2`,
+          [`Token exchange failed: ${tokenResponse.status}`, state]
+        );
+
+        return res
+          .status(502)
+          .json({ success: false, error: 'Token exchange failed' });
+      }
+
+      const tokenData = await tokenResponse.json();
+
+      const encryptedAccess = encrypt(tokenData.access_token);
+      const encryptedRefresh = tokenData.refresh_token
+        ? encrypt(tokenData.refresh_token)
+        : null;
+
+      await pool.query(
+        `UPDATE oauth_handoffs
+         SET status = 'completed',
+             access_token = $1,
+             refresh_token = $2,
+             token_type = $3,
+             expires_in = $4,
+             scope = $5,
+             completed_at = NOW(),
+             updated_at = NOW()
+         WHERE state = $6`,
+        [
+          encryptedAccess,
+          encryptedRefresh,
+          tokenData.token_type || null,
+          tokenData.expires_in || null,
+          tokenData.scope || null,
+          state,
+        ]
+      );
+
+      res.json({ success: true, message: 'Authorization completed' });
+    } catch (err) {
+      console.error('OAuth callback error:', err.message);
+
+      await pool
+        .query(
+          `UPDATE oauth_handoffs
+           SET status = 'failed', error_message = $1, updated_at = NOW()
+           WHERE state = $2 AND status = 'pending'`,
+          [err.message, state]
+        )
+        .catch(() => {});
+
+      res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+  }
+);
+
+// GET endpoint to check OAuth handoff status
+app.get(
+  '/api/oauth/discobard/status',
+  apiKeyAuth,
+  [query('state').exists().withMessage('State parameter is required')],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+      const result = await pool.query(
+        `SELECT state, status, error_message, created_at, completed_at
+         FROM oauth_handoffs WHERE state = $1`,
+        [req.query.state]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Handoff not found' });
+      }
+
+      const row = result.rows[0];
+      res.json({
+        state: row.state,
+        status: row.status,
+        error: row.error_message || undefined,
+        created_at: row.created_at,
+        completed_at: row.completed_at || undefined,
+      });
+    } catch (err) {
+      console.error('Status check error:', err.message);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+// POST endpoint to consume (retrieve and mark used) OAuth tokens
+app.post('/api/oauth/discobard/consume', apiKeyAuth, async (req, res) => {
+  const { state } = req.body;
+
+  if (!state) {
+    return res.status(400).json({ error: 'State is required' });
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE oauth_handoffs
+       SET status = 'consumed', updated_at = NOW()
+       WHERE state = $1 AND status = 'completed'
+       RETURNING *`,
+      [state]
+    );
+
+    if (result.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: 'No completed handoff found for this state' });
+    }
+
+    const row = result.rows[0];
+
+    res.json({
+      state: row.state,
+      status: 'consumed',
+      token: {
+        access_token: decrypt(row.access_token),
+        refresh_token: row.refresh_token ? decrypt(row.refresh_token) : null,
+        token_type: row.token_type,
+        expires_in: row.expires_in,
+        scope: row.scope,
+      },
+    });
+  } catch (err) {
+    console.error('Consume error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Expire stale pending OAuth handoffs every 5 minutes
+setInterval(async () => {
+  try {
+    const result = await pool.query(
+      `UPDATE oauth_handoffs
+       SET status = 'expired', updated_at = NOW()
+       WHERE status = 'pending' AND expires_at < NOW()`
+    );
+    if (result.rowCount > 0) {
+      console.log(`Expired ${result.rowCount} stale OAuth handoff(s)`);
+    }
+  } catch (err) {
+    console.error('OAuth cleanup error:', err.message);
+  }
+}, 5 * 60 * 1000);
 //#endregion
 
 // #region [ Grey]
