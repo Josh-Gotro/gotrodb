@@ -7,9 +7,9 @@ function apiKeyAuth(req, res, next) {
     return res.status(401).json({ error: 'API key required' });
   }
 
-  const expected = process.env.DISCOBARD_API_KEY;
+  const expected = process.env.DISCOBARD_OAUTH_BRIDGE_API_KEY;
   if (!expected) {
-    console.error('DISCOBARD_API_KEY is not configured');
+    console.error('DISCOBARD_OAUTH_BRIDGE_API_KEY is not configured');
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
