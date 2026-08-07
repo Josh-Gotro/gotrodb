@@ -696,20 +696,27 @@ app.post('/spotify/mcp-token', oauthLimiter, async (req, res) => {
     // may bind tokens — otherwise any visitor could hijack the MCP's
     // identity by connecting their own account (v2-plan §5.2).
     const allowedUserId = process.env.SPOTIFY_ALLOWED_USER_ID;
+    const meResponse = await fetch('https://api.spotify.com/v1/me', {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+    if (!meResponse.ok) {
+      return res.status(401).json({ error: 'Could not verify Spotify account' });
+    }
+    const me = await meResponse.json();
+
+    // Always log which account bound: an audit line, and the way to discover
+    // the id to put in SPOTIFY_ALLOWED_USER_ID on first deploy.
+    console.log(`Spotify MCP token bind by account id: ${me.id}`);
+
     if (allowedUserId) {
-      const meResponse = await fetch('https://api.spotify.com/v1/me', {
-        headers: { Authorization: `Bearer ${access_token}` },
-      });
-      if (!meResponse.ok) {
-        return res.status(401).json({ error: 'Could not verify Spotify account' });
-      }
-      const me = await meResponse.json();
       if (me.id !== allowedUserId) {
         console.warn(`Rejected MCP token bind from Spotify account ${me.id}`);
         return res.status(403).json({ error: 'This Spotify account is not allowed to bind here' });
       }
     } else {
-      console.warn('SPOTIFY_ALLOWED_USER_ID not set; accepting any account (set it in production!)');
+      console.warn(
+        `SPOTIFY_ALLOWED_USER_ID not set; accepted account ${me.id}. Set it to lock binding to one account.`
+      );
     }
 
     // Store token in database (upsert - update if exists, insert if not),
