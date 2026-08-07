@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const crypto = require('crypto');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const { body, query, validationResult } = require('express-validator');
 const pool = require('./db');
 const cors = require('cors');
@@ -13,8 +15,25 @@ const app = express();
 //#region [ Purple ] MIDDLEWARE
 //parse JSON bodies
 app.use(bodyParser.json());
+app.use(helmet());
+// Heroku terminates TLS at the router; needed for per-IP rate limiting.
+app.set('trust proxy', 1);
 
 app.set('log level', 'debug');
+
+// OAuth-adjacent endpoints are unauthenticated by design; make them cheap to
+// abuse-proof. Keyed reads (spotify-mcp polling) are not limited.
+const oauthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// sha256 of the discobard state so DB read access alone can't complete a
+// handoff. Raw state travels only via the OAuth redirect.
+const hashState = (state) =>
+  crypto.createHash('sha256').update(state).digest('hex');
 
 // Enable CORS for a specific origin ('https://www.joshgotro.com' in this case)
 app.use(
@@ -98,10 +117,10 @@ app.post(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    try {
-      const { length, width, height, volume, water, plaster_lbs, plaster_oz } =
-        req.body;
+    const { length, width, height, volume, water, plaster_lbs, plaster_oz } =
+      req.body;
 
+    try {
       const newCalculation = await pool.query(
         'INSERT INTO plaster_calculations (length, width, height, volume, water, plaster_lbs, plaster_oz) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
         [length, width, height, volume, water, plaster_lbs, plaster_oz]
@@ -110,10 +129,11 @@ app.post(
       res.json(newCalculation.rows[0]);
     } catch (err) {
       if (err.code === '23505') {
-        // Unique violation error
+        // Unique violation: return the existing row. (This handler previously
+        // referenced variables scoped inside the try and crashed.)
         const existingCalculation = await pool.query(
           'SELECT * FROM plaster_calculations WHERE length = $1 AND width = $2 AND height = $3',
-          [length.toString(), width.toString(), height.toString()]
+          [length, width, height]
         );
 
         return res.status(200).json({
@@ -597,8 +617,8 @@ app.delete('/kiln-glass-records/:id', (req, res) => {
 
 // #region [ Spotify Green ] SPOTIFY
 // POST endpoint to exchange authorization code for tokens
-app.post('/spotify/token', async (req, res) => {
-  const { code, redirect_uri } = req.body;
+app.post('/spotify/token', oauthLimiter, async (req, res) => {
+  const { code, redirect_uri, code_verifier } = req.body;
 
   if (!code) {
     return res.status(400).json({ error: 'Authorization code is required' });
@@ -625,6 +645,8 @@ app.post('/spotify/token', async (req, res) => {
         grant_type: 'authorization_code',
         code,
         redirect_uri: redirect_uri || process.env.SPOTIFY_REDIRECT_URI,
+        // Present for PKCE flows (v2 frontend); harmless when absent.
+        ...(code_verifier ? { code_verifier } : {}),
       }),
     });
 
@@ -650,8 +672,19 @@ app.post('/spotify/token', async (req, res) => {
   }
 });
 
+// Decrypt a stored token column, tolerating legacy plaintext rows: values
+// written before encryption-at-rest don't have the iv:tag:cipher shape.
+function decryptTokenColumn(value) {
+  if (!value) return value;
+  try {
+    return decrypt(value);
+  } catch {
+    return value; // legacy plaintext; re-encrypted on next store
+  }
+}
+
 // POST endpoint to store tokens for MCP access
-app.post('/spotify/mcp-token', async (req, res) => {
+app.post('/spotify/mcp-token', oauthLimiter, async (req, res) => {
   const { access_token, refresh_token, expires_in } = req.body;
 
   if (!access_token || !refresh_token) {
@@ -659,7 +692,28 @@ app.post('/spotify/mcp-token', async (req, res) => {
   }
 
   try {
-    // Store token in database (upsert - update if exists, insert if not)
+    // The connect page is public, but only the allowlisted Spotify account
+    // may bind tokens — otherwise any visitor could hijack the MCP's
+    // identity by connecting their own account (v2-plan §5.2).
+    const allowedUserId = process.env.SPOTIFY_ALLOWED_USER_ID;
+    if (allowedUserId) {
+      const meResponse = await fetch('https://api.spotify.com/v1/me', {
+        headers: { Authorization: `Bearer ${access_token}` },
+      });
+      if (!meResponse.ok) {
+        return res.status(401).json({ error: 'Could not verify Spotify account' });
+      }
+      const me = await meResponse.json();
+      if (me.id !== allowedUserId) {
+        console.warn(`Rejected MCP token bind from Spotify account ${me.id}`);
+        return res.status(403).json({ error: 'This Spotify account is not allowed to bind here' });
+      }
+    } else {
+      console.warn('SPOTIFY_ALLOWED_USER_ID not set; accepting any account (set it in production!)');
+    }
+
+    // Store token in database (upsert - update if exists, insert if not),
+    // encrypted at rest like the discobard tokens.
     const expiresAt = Math.floor(Date.now() / 1000) + (expires_in || 3600);
 
     await pool.query(`
@@ -670,7 +724,7 @@ app.post('/spotify/mcp-token', async (req, res) => {
         refresh_token = $2,
         expires_at = $3,
         updated_at = NOW()
-    `, [access_token, refresh_token, expiresAt, 'user-library-read user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public']);
+    `, [encrypt(access_token), encrypt(refresh_token), expiresAt, 'user-library-read user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public']);
 
     res.json({ status: 'success', message: 'Token stored for MCP' });
   } catch (error) {
@@ -679,8 +733,10 @@ app.post('/spotify/mcp-token', async (req, res) => {
   }
 });
 
-// GET endpoint to retrieve tokens for MCP (spotipy format)
-app.get('/spotify/mcp-token', async (req, res) => {
+// GET endpoint to retrieve tokens for MCP (spotipy format).
+// Requires the spotify-mcp API key: these are live account tokens and this
+// endpoint used to serve them to anyone who knew the URL (v2-plan §5.1).
+app.get('/spotify/mcp-token', apiKeyAuth('SPOTIFY_MCP_API_KEY'), async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM spotify_mcp_tokens WHERE id = 1');
 
@@ -692,8 +748,8 @@ app.get('/spotify/mcp-token', async (req, res) => {
 
     // Return in spotipy cache format
     res.json({
-      access_token: token.access_token,
-      refresh_token: token.refresh_token,
+      access_token: decryptTokenColumn(token.access_token),
+      refresh_token: decryptTokenColumn(token.refresh_token),
       token_type: token.token_type || 'Bearer',
       expires_at: token.expires_at,
       scope: token.scope,
@@ -705,8 +761,29 @@ app.get('/spotify/mcp-token', async (req, res) => {
   }
 });
 
+// GET endpoint for the frontend's "connected" indicator: no tokens leave the
+// server, so the browser no longer needs a localStorage copy (v2-plan §5.4).
+app.get('/spotify/status', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT expires_at, updated_at FROM spotify_mcp_tokens WHERE id = 1'
+    );
+    if (result.rows.length === 0) {
+      return res.json({ connected: false });
+    }
+    res.json({
+      connected: true,
+      expires_at: result.rows[0].expires_at,
+      updated_at: result.rows[0].updated_at,
+    });
+  } catch (error) {
+    console.error('Error checking Spotify status:', error);
+    res.status(500).json({ error: 'Failed to check status' });
+  }
+});
+
 // POST endpoint to refresh access token
-app.post('/spotify/refresh', async (req, res) => {
+app.post('/spotify/refresh', oauthLimiter, async (req, res) => {
   const { refresh_token } = req.body;
 
   if (!refresh_token) {
@@ -759,16 +836,38 @@ app.post('/spotify/refresh', async (req, res) => {
 //#endregion
 
 // #region [ Orange ] DISCOBARD OAUTH BRIDGE
+
+// returnUrl is followed by the browser after the handoff completes; anything
+// not on the allowlist would make joshgotro.com an open redirect (§5.5).
+function isAllowedReturnUrl(returnUrl) {
+  const allowlist = (process.env.DISCOBARD_RETURN_URL_ALLOWLIST || '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  if (allowlist.length === 0) return false;
+  try {
+    const url = new URL(returnUrl);
+    return allowlist.some((prefix) => returnUrl.startsWith(prefix)) &&
+      ['https:', 'http:', 'discord:'].includes(url.protocol);
+  } catch {
+    return false;
+  }
+}
+
 // POST endpoint to initiate an OAuth handoff for Warcraft Logs
-app.post('/api/oauth/discobard/start', apiKeyAuth, async (req, res) => {
+app.post('/api/oauth/discobard/start', apiKeyAuth(), oauthLimiter, async (req, res) => {
   try {
     const state = crypto.randomBytes(32).toString('hex');
     const returnUrl = req.body.returnUrl || null;
 
+    if (returnUrl && !isAllowedReturnUrl(returnUrl)) {
+      return res.status(400).json({ error: 'returnUrl not on the allowlist' });
+    }
+
     await pool.query(
       `INSERT INTO oauth_handoffs (provider, state, status, expires_at, return_url)
        VALUES ('warcraftlogs', $1, 'pending', NOW() + INTERVAL '15 minutes', $2)`,
-      [state, returnUrl]
+      [hashState(state), returnUrl]
     );
 
     const params = new URLSearchParams({
@@ -790,6 +889,7 @@ app.post('/api/oauth/discobard/start', apiKeyAuth, async (req, res) => {
 // POST endpoint for the frontend callback to exchange code for tokens
 app.post(
   '/api/oauth/discobard/callback',
+  oauthLimiter,
   [
     body('code').exists().withMessage('Authorization code is required'),
     body('state').exists().withMessage('State is required'),
@@ -800,7 +900,8 @@ app.post(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { code, state } = req.body;
+    const { code } = req.body;
+    const state = hashState(req.body.state);
 
     try {
       const handoff = await pool.query(
@@ -899,7 +1000,7 @@ app.post(
 // GET endpoint to check OAuth handoff status
 app.get(
   '/api/oauth/discobard/status',
-  apiKeyAuth,
+  apiKeyAuth(),
   [query('state').exists().withMessage('State parameter is required')],
   async (req, res) => {
     const errors = validationResult(req);
@@ -909,9 +1010,9 @@ app.get(
 
     try {
       const result = await pool.query(
-        `SELECT state, status, error_message, created_at, completed_at
+        `SELECT status, error_message, created_at, completed_at
          FROM oauth_handoffs WHERE state = $1`,
-        [req.query.state]
+        [hashState(req.query.state)]
       );
 
       if (result.rows.length === 0) {
@@ -920,7 +1021,7 @@ app.get(
 
       const row = result.rows[0];
       res.json({
-        state: row.state,
+        state: req.query.state,
         status: row.status,
         error: row.error_message || undefined,
         created_at: row.created_at,
@@ -934,7 +1035,7 @@ app.get(
 );
 
 // POST endpoint to consume (retrieve and mark used) OAuth tokens
-app.post('/api/oauth/discobard/consume', apiKeyAuth, async (req, res) => {
+app.post('/api/oauth/discobard/consume', apiKeyAuth(), async (req, res) => {
   const { state } = req.body;
 
   if (!state) {
@@ -947,7 +1048,7 @@ app.post('/api/oauth/discobard/consume', apiKeyAuth, async (req, res) => {
        SET status = 'consumed', updated_at = NOW()
        WHERE state = $1 AND status = 'completed'
        RETURNING *`,
-      [state]
+      [hashState(state)]
     );
 
     if (result.rows.length === 0) {
@@ -959,7 +1060,7 @@ app.post('/api/oauth/discobard/consume', apiKeyAuth, async (req, res) => {
     const row = result.rows[0];
 
     res.json({
-      state: row.state,
+      state,
       status: 'consumed',
       token: {
         access_token: decrypt(row.access_token),

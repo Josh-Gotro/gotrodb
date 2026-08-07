@@ -1,6 +1,9 @@
-const { Client } = require('pg');
+const { Pool } = require('pg');
 
-const clientConfig = process.env.DATABASE_URL
+// Pool instead of a single Client: survives dropped connections (Heroku
+// recycles idle ones) and doesn't serialize every query through one socket.
+// pool.query() has the same signature the rest of the code already uses.
+const poolConfig = process.env.DATABASE_URL
   ? {
       connectionString: process.env.DATABASE_URL,
       ssl: {
@@ -15,8 +18,10 @@ const clientConfig = process.env.DATABASE_URL
       port: 5432,
     };
 
-const client = new Client(clientConfig);
+const pool = new Pool({ ...poolConfig, max: 5 });
 
-client.connect();
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err.message);
+});
 
-module.exports = client;
+module.exports = pool;
